@@ -22,16 +22,98 @@
          */
         bindEvents: function() {
             // Test connection button.
-            $('#ecwid-wc-test-connection').on('click', this.testConnection.bind(this));
+            $(document).on('click', '#ecwid-wc-test-connection', this.testConnection.bind(this));
 
             // Start sync button.
-            $('#ecwid-wc-start-sync').on('click', this.startSync.bind(this));
+            $(document).on('click', '#ecwid-wc-start-sync', this.startSync.bind(this));
 
             // Clear logs button.
-            $('#ecwid-wc-clear-logs').on('click', this.clearLogs.bind(this));
+            $(document).on('click', '#ecwid-wc-clear-logs', this.clearLogs.bind(this));
 
             // Toggle log context.
             $(document).on('click', '.ecwid-wc-toggle-context', this.toggleLogContext);
+
+            // Toggle password visibility.
+            $(document).on('click', '.ecwid-wc-toggle-password', this.togglePassword);
+
+            // Form validation.
+            $('#ecwid-wc-settings-form').on('submit', this.validateForm.bind(this));
+
+            // Store ID validation on blur.
+            $('#ecwid_wc_ecwid_store_id').on('blur', this.validateStoreId);
+        },
+
+        /**
+         * Validate Store ID format.
+         */
+        validateStoreId: function() {
+            var $input = $(this);
+            var value = $input.val().trim();
+            
+            if (value && !/^\d+$/.test(value)) {
+                EcwidWCAdmin.showFieldError($input, ecwidWcAdmin.strings.invalidStoreId);
+                return false;
+            } else {
+                EcwidWCAdmin.clearFieldError($input);
+                return true;
+            }
+        },
+
+        /**
+         * Validate form before submit.
+         */
+        validateForm: function(e) {
+            var isValid = true;
+            
+            // Validate Store ID.
+            var $storeId = $('#ecwid_wc_ecwid_store_id');
+            var storeIdValue = $storeId.val().trim();
+            
+            if (storeIdValue && !/^\d+$/.test(storeIdValue)) {
+                this.showFieldError($storeId, ecwidWcAdmin.strings.invalidStoreId);
+                isValid = false;
+            }
+            
+            if (!isValid) {
+                e.preventDefault();
+            }
+            
+            return isValid;
+        },
+
+        /**
+         * Show field error.
+         */
+        showFieldError: function($field, message) {
+            this.clearFieldError($field);
+            $field.addClass('ecwid-wc-field-error');
+            $field.after('<span class="ecwid-wc-field-error-message" style="color:#d63638;display:block;margin-top:5px;">' + message + '</span>');
+        },
+
+        /**
+         * Clear field error.
+         */
+        clearFieldError: function($field) {
+            $field.removeClass('ecwid-wc-field-error');
+            $field.siblings('.ecwid-wc-field-error-message').remove();
+        },
+
+        /**
+         * Toggle password visibility.
+         */
+        togglePassword: function(e) {
+            e.preventDefault();
+            var $button = $(this);
+            var $input = $button.siblings('input');
+            var $icon = $button.find('.dashicons');
+            
+            if ($input.attr('type') === 'password') {
+                $input.attr('type', 'text');
+                $icon.removeClass('dashicons-visibility').addClass('dashicons-hidden');
+            } else {
+                $input.attr('type', 'password');
+                $icon.removeClass('dashicons-hidden').addClass('dashicons-visibility');
+            }
         },
 
         /**
@@ -41,29 +123,57 @@
             e.preventDefault();
 
             var $button = $(e.currentTarget);
-            var originalText = $button.text();
+            
+            if ($button.hasClass('ecwid-wc-testing')) {
+                return;
+            }
 
-            $button.prop('disabled', true).text(ecwidWcAdmin.strings.testing);
+            var $container = $('#ecwid-wc-connection-status-container');
+            var originalContent = $container.find('.ecwid-wc-status').clone();
+
+            // Get current form values.
+            var storeId = $('#ecwid_wc_ecwid_store_id').val().trim();
+            var accessToken = $('#ecwid_wc_ecwid_access_token').val().trim();
+
+            // Update UI.
+            $button.addClass('ecwid-wc-testing').prop('disabled', true);
+            $container.find('.ecwid-wc-status').html(
+                '<span class="dashicons dashicons-update"></span> ' + ecwidWcAdmin.strings.testing
+            ).removeClass('ecwid-wc-status-connected ecwid-wc-status-error ecwid-wc-status-unknown ecwid-wc-status-not-configured');
 
             $.ajax({
                 url: ecwidWcAdmin.ajaxUrl,
                 type: 'POST',
                 data: {
                     action: 'ecwid_wc_test_connection',
-                    nonce: ecwidWcAdmin.nonce
+                    nonce: ecwidWcAdmin.nonce,
+                    store_id: storeId,
+                    access_token: accessToken
                 },
                 success: function(response) {
+                    var $status = $container.find('.ecwid-wc-status');
+                    
                     if (response.success) {
-                        EcwidWCAdmin.showNotice('success', ecwidWcAdmin.strings.connected);
+                        $status
+                            .html('<span class="dashicons dashicons-yes-alt"></span> ' + response.data.message)
+                            .addClass('ecwid-wc-status-connected');
+                        EcwidWCAdmin.showNotice('success', response.data.message);
                     } else {
+                        $status
+                            .html('<span class="dashicons dashicons-warning"></span> ' + (response.data.message || ecwidWcAdmin.strings.connectError))
+                            .addClass('ecwid-wc-status-error');
                         EcwidWCAdmin.showNotice('error', response.data.message || ecwidWcAdmin.strings.connectError);
                     }
                 },
                 error: function() {
+                    var $status = $container.find('.ecwid-wc-status');
+                    $status
+                        .html('<span class="dashicons dashicons-warning"></span> ' + ecwidWcAdmin.strings.connectError)
+                        .addClass('ecwid-wc-status-error');
                     EcwidWCAdmin.showNotice('error', ecwidWcAdmin.strings.connectError);
                 },
                 complete: function() {
-                    $button.prop('disabled', false).text(originalText);
+                    $button.removeClass('ecwid-wc-testing').prop('disabled', false);
                 }
             });
         },
@@ -81,7 +191,8 @@
             }
 
             $button.addClass('ecwid-wc-syncing').prop('disabled', true);
-            $button.find('.dashicons').after(' ' + ecwidWcAdmin.strings.syncing);
+            var originalHtml = $button.html();
+            $button.html('<span class="dashicons dashicons-update"></span> ' + ecwidWcAdmin.strings.syncing);
 
             // Show progress.
             $('#ecwid-wc-sync-progress').slideDown();
@@ -106,10 +217,7 @@
                     EcwidWCAdmin.showNotice('error', ecwidWcAdmin.strings.syncError);
                 },
                 complete: function() {
-                    $button.removeClass('ecwid-wc-syncing').prop('disabled', false);
-                    $button.contents().filter(function() {
-                        return this.nodeType === 3;
-                    }).remove();
+                    $button.removeClass('ecwid-wc-syncing').prop('disabled', false).html(originalHtml);
                     $('#ecwid-wc-sync-progress').slideUp();
                 }
             });
@@ -224,7 +332,10 @@
          * Show admin notice.
          */
         showNotice: function(type, message) {
-            var $notice = $('<div class="notice notice-' + type + ' is-dismissible"><p>' + message + '</p></div>');
+            // Remove existing notices of same type.
+            $('.ecwid-wc-admin-notice.' + type).remove();
+            
+            var $notice = $('<div class="notice notice-' + type + ' is-dismissible ecwid-wc-admin-notice ' + type + '"><p>' + message + '</p><button type="button" class="notice-dismiss"><span class="screen-reader-text">Dismiss this notice.</span></button></div>');
             
             $('.wrap h1').first().after($notice);
             

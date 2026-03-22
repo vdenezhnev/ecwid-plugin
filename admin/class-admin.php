@@ -8,6 +8,10 @@
 
 namespace Ecwid_WooCommerce;
 
+use Ecwid_WooCommerce\Utils\Encryption;
+use Ecwid_WooCommerce\Utils\Logger;
+use Ecwid_WooCommerce\Api\Ecwid_Api;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -34,6 +38,13 @@ class Admin {
     private $version;
 
     /**
+     * Encryption instance.
+     *
+     * @var Encryption
+     */
+    private $encryption;
+
+    /**
      * Constructor.
      *
      * @param string $plugin_slug Plugin slug.
@@ -42,6 +53,7 @@ class Admin {
     public function __construct( $plugin_slug, $version ) {
         $this->plugin_slug = $plugin_slug;
         $this->version     = $version;
+        $this->encryption  = Encryption::get_instance();
 
         $this->init_hooks();
     }
@@ -62,6 +74,7 @@ class Admin {
         add_action( 'wp_ajax_ecwid_wc_get_sync_status', array( $this, 'ajax_get_sync_status' ) );
         add_action( 'wp_ajax_ecwid_wc_clear_logs', array( $this, 'ajax_clear_logs' ) );
         add_action( 'wp_ajax_ecwid_wc_test_connection', array( $this, 'ajax_test_connection' ) );
+        add_action( 'wp_ajax_ecwid_wc_save_credentials', array( $this, 'ajax_save_credentials' ) );
     }
 
     /**
@@ -126,40 +139,41 @@ class Admin {
             $this->plugin_slug
         );
 
-        // Store ID.
+        // Store ID - standard field (not encrypted).
         register_setting( $this->plugin_slug, 'ecwid_wc_ecwid_store_id', array(
             'type'              => 'string',
-            'sanitize_callback' => 'sanitize_text_field',
+            'sanitize_callback' => array( $this, 'sanitize_store_id' ),
         ) );
 
         add_settings_field(
             'ecwid_wc_ecwid_store_id',
             __( 'Ecwid Store ID', 'ecwid-woocommerce' ),
-            array( $this, 'render_text_field' ),
+            array( $this, 'render_store_id_field' ),
             $this->plugin_slug,
-            'ecwid_wc_api_settings',
-            array(
-                'id'          => 'ecwid_wc_ecwid_store_id',
-                'description' => __( 'Your Ecwid Store ID (numeric).', 'ecwid-woocommerce' ),
-            )
+            'ecwid_wc_api_settings'
         );
 
-        // Access Token.
+        // Access Token - encrypted field.
         register_setting( $this->plugin_slug, 'ecwid_wc_ecwid_access_token', array(
             'type'              => 'string',
-            'sanitize_callback' => 'sanitize_text_field',
+            'sanitize_callback' => array( $this, 'sanitize_access_token' ),
         ) );
 
         add_settings_field(
             'ecwid_wc_ecwid_access_token',
             __( 'Ecwid Access Token', 'ecwid-woocommerce' ),
-            array( $this, 'render_password_field' ),
+            array( $this, 'render_access_token_field' ),
             $this->plugin_slug,
-            'ecwid_wc_api_settings',
-            array(
-                'id'          => 'ecwid_wc_ecwid_access_token',
-                'description' => __( 'Your Ecwid API access token.', 'ecwid-woocommerce' ),
-            )
+            'ecwid_wc_api_settings'
+        );
+
+        // Connection status field (display only).
+        add_settings_field(
+            'ecwid_wc_connection_status',
+            __( 'Connection Status', 'ecwid-woocommerce' ),
+            array( $this, 'render_connection_status_field' ),
+            $this->plugin_slug,
+            'ecwid_wc_api_settings'
         );
 
         // Sync settings section.
@@ -266,13 +280,202 @@ class Admin {
             array(
                 'id'      => 'ecwid_wc_sync_interval',
                 'options' => array(
-                    'manual'                  => __( 'Manual', 'ecwid-woocommerce' ),
+                    'manual'                   => __( 'Manual', 'ecwid-woocommerce' ),
                     'ecwid_wc_fifteen_minutes' => __( 'Every 15 minutes', 'ecwid-woocommerce' ),
-                    'hourly'                  => __( 'Hourly', 'ecwid-woocommerce' ),
-                    'daily'                   => __( 'Daily', 'ecwid-woocommerce' ),
+                    'hourly'                   => __( 'Hourly', 'ecwid-woocommerce' ),
+                    'daily'                    => __( 'Daily', 'ecwid-woocommerce' ),
                 ),
             )
         );
+    }
+
+    /**
+     * Sanitize Store ID.
+     *
+     * @param string $value Store ID value.
+     * @return string
+     */
+    public function sanitize_store_id( $value ) {
+        $value = sanitize_text_field( $value );
+
+        // Validate format.
+        if ( ! empty( $value ) && ! Ecwid_Api::validate_store_id( $value ) ) {
+            add_settings_error(
+                'ecwid_wc_ecwid_store_id',
+                'invalid_store_id',
+                __( 'Store ID must be a numeric value.', 'ecwid-woocommerce' ),
+                'error'
+            );
+            return get_option( 'ecwid_wc_ecwid_store_id', '' );
+        }
+
+        return $value;
+    }
+
+    /**
+     * Sanitize and encrypt Access Token.
+     *
+     * @param string $value Access token value.
+     * @return string
+     */
+    public function sanitize_access_token( $value ) {
+        $value = sanitize_text_field( $value );
+
+        // If empty, keep existing value.
+        if ( empty( $value ) ) {
+            return get_option( 'ecwid_wc_ecwid_access_token', '' );
+        }
+
+        // If the value looks like it's already encrypted, return as-is.
+        if ( $this->encryption->is_encrypted( $value ) ) {
+            return $value;
+        }
+
+        // Validate format.
+        if ( ! Ecwid_Api::validate_access_token( $value ) ) {
+            add_settings_error(
+                'ecwid_wc_ecwid_access_token',
+                'invalid_access_token',
+                __( 'Access token appears to be invalid.', 'ecwid-woocommerce' ),
+                'error'
+            );
+            return get_option( 'ecwid_wc_ecwid_access_token', '' );
+        }
+
+        // Encrypt the token.
+        $encrypted = $this->encryption->encrypt( $value );
+
+        if ( false === $encrypted ) {
+            add_settings_error(
+                'ecwid_wc_ecwid_access_token',
+                'encryption_failed',
+                __( 'Failed to encrypt access token.', 'ecwid-woocommerce' ),
+                'error'
+            );
+            return get_option( 'ecwid_wc_ecwid_access_token', '' );
+        }
+
+        // Clear connection status cache when credentials change.
+        delete_transient( 'ecwid_wc_connection_status' );
+
+        return $encrypted;
+    }
+
+    /**
+     * Render Store ID field.
+     *
+     * @return void
+     */
+    public function render_store_id_field() {
+        $value = get_option( 'ecwid_wc_ecwid_store_id', '' );
+        ?>
+        <input type="text" 
+               id="ecwid_wc_ecwid_store_id" 
+               name="ecwid_wc_ecwid_store_id" 
+               value="<?php echo esc_attr( $value ); ?>" 
+               class="regular-text"
+               placeholder="<?php esc_attr_e( 'e.g., 12345678', 'ecwid-woocommerce' ); ?>"
+               pattern="[0-9]+"
+               title="<?php esc_attr_e( 'Store ID must be numeric', 'ecwid-woocommerce' ); ?>" />
+        <p class="description">
+            <?php esc_html_e( 'Your Ecwid Store ID (numeric). Find it in Ecwid Control Panel > Settings > Store Profile.', 'ecwid-woocommerce' ); ?>
+        </p>
+        <?php
+    }
+
+    /**
+     * Render Access Token field.
+     *
+     * @return void
+     */
+    public function render_access_token_field() {
+        $encrypted_value = get_option( 'ecwid_wc_ecwid_access_token', '' );
+        $has_token       = ! empty( $encrypted_value );
+        $masked_value    = '';
+
+        if ( $has_token ) {
+            $decrypted    = $this->encryption->decrypt( $encrypted_value );
+            $masked_value = $this->encryption->mask( $decrypted, 4 );
+        }
+        ?>
+        <div class="ecwid-wc-token-field">
+            <input type="password" 
+                   id="ecwid_wc_ecwid_access_token" 
+                   name="ecwid_wc_ecwid_access_token" 
+                   value="" 
+                   class="regular-text"
+                   placeholder="<?php echo $has_token ? esc_attr( $masked_value ) : esc_attr__( 'Enter your access token', 'ecwid-woocommerce' ); ?>"
+                   autocomplete="new-password" />
+            <button type="button" class="button ecwid-wc-toggle-password" title="<?php esc_attr_e( 'Show/Hide', 'ecwid-woocommerce' ); ?>">
+                <span class="dashicons dashicons-visibility"></span>
+            </button>
+        </div>
+        <?php if ( $has_token ) : ?>
+            <p class="description ecwid-wc-token-status">
+                <span class="dashicons dashicons-yes-alt" style="color: #46b450;"></span>
+                <?php esc_html_e( 'Token is stored (encrypted). Leave blank to keep current token.', 'ecwid-woocommerce' ); ?>
+            </p>
+        <?php else : ?>
+            <p class="description">
+                <?php esc_html_e( 'Your Ecwid API access token. Get it from Ecwid Control Panel > Apps > My Apps.', 'ecwid-woocommerce' ); ?>
+            </p>
+        <?php endif; ?>
+        <?php if ( ! $this->encryption->is_encryption_available() ) : ?>
+            <p class="description" style="color: #d63638;">
+                <span class="dashicons dashicons-warning"></span>
+                <?php esc_html_e( 'Warning: OpenSSL extension is not available. Tokens will be stored with basic encoding only.', 'ecwid-woocommerce' ); ?>
+            </p>
+        <?php endif; ?>
+        <?php
+    }
+
+    /**
+     * Render Connection Status field.
+     *
+     * @return void
+     */
+    public function render_connection_status_field() {
+        $store_id  = get_option( 'ecwid_wc_ecwid_store_id', '' );
+        $has_token = ! empty( get_option( 'ecwid_wc_ecwid_access_token', '' ) );
+
+        if ( empty( $store_id ) || ! $has_token ) {
+            ?>
+            <span class="ecwid-wc-status ecwid-wc-status-not-configured">
+                <span class="dashicons dashicons-minus"></span>
+                <?php esc_html_e( 'Not configured', 'ecwid-woocommerce' ); ?>
+            </span>
+            <?php
+            return;
+        }
+
+        // Check cached status.
+        $cached_status = get_transient( 'ecwid_wc_connection_status' );
+        ?>
+        <div id="ecwid-wc-connection-status-container">
+            <?php if ( false !== $cached_status ) : ?>
+                <?php if ( $cached_status['success'] ) : ?>
+                    <span class="ecwid-wc-status ecwid-wc-status-connected">
+                        <span class="dashicons dashicons-yes-alt"></span>
+                        <?php echo esc_html( $cached_status['message'] ); ?>
+                    </span>
+                <?php else : ?>
+                    <span class="ecwid-wc-status ecwid-wc-status-error">
+                        <span class="dashicons dashicons-warning"></span>
+                        <?php echo esc_html( $cached_status['message'] ); ?>
+                    </span>
+                <?php endif; ?>
+            <?php else : ?>
+                <span class="ecwid-wc-status ecwid-wc-status-unknown">
+                    <span class="dashicons dashicons-editor-help"></span>
+                    <?php esc_html_e( 'Unknown', 'ecwid-woocommerce' ); ?>
+                </span>
+            <?php endif; ?>
+            <button type="button" id="ecwid-wc-test-connection" class="button button-secondary">
+                <span class="dashicons dashicons-update"></span>
+                <?php esc_html_e( 'Test Connection', 'ecwid-woocommerce' ); ?>
+            </button>
+        </div>
+        <?php
     }
 
     /**
@@ -306,16 +509,22 @@ class Admin {
             $this->plugin_slug . '-admin',
             'ecwidWcAdmin',
             array(
-                'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
-                'nonce'         => wp_create_nonce( 'ecwid_wc_admin' ),
-                'strings'       => array(
-                    'syncing'     => __( 'Syncing...', 'ecwid-woocommerce' ),
-                    'syncComplete' => __( 'Sync completed!', 'ecwid-woocommerce' ),
-                    'syncError'   => __( 'Sync failed. Please check logs.', 'ecwid-woocommerce' ),
-                    'testing'     => __( 'Testing connection...', 'ecwid-woocommerce' ),
-                    'connected'   => __( 'Connection successful!', 'ecwid-woocommerce' ),
-                    'connectError' => __( 'Connection failed.', 'ecwid-woocommerce' ),
-                    'confirm'     => __( 'Are you sure?', 'ecwid-woocommerce' ),
+                'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+                'nonce'   => wp_create_nonce( 'ecwid_wc_admin' ),
+                'strings' => array(
+                    'syncing'       => __( 'Syncing...', 'ecwid-woocommerce' ),
+                    'syncComplete'  => __( 'Sync completed!', 'ecwid-woocommerce' ),
+                    'syncError'     => __( 'Sync failed. Please check logs.', 'ecwid-woocommerce' ),
+                    'testing'       => __( 'Testing...', 'ecwid-woocommerce' ),
+                    'connected'     => __( 'Connection successful!', 'ecwid-woocommerce' ),
+                    'connectError'  => __( 'Connection failed.', 'ecwid-woocommerce' ),
+                    'confirm'       => __( 'Are you sure?', 'ecwid-woocommerce' ),
+                    'saving'        => __( 'Saving...', 'ecwid-woocommerce' ),
+                    'saved'         => __( 'Saved!', 'ecwid-woocommerce' ),
+                    'saveError'     => __( 'Failed to save.', 'ecwid-woocommerce' ),
+                    'validating'    => __( 'Validating credentials...', 'ecwid-woocommerce' ),
+                    'invalidStoreId' => __( 'Store ID must be numeric.', 'ecwid-woocommerce' ),
+                    'invalidToken'  => __( 'Access token is required.', 'ecwid-woocommerce' ),
                 ),
             )
         );
@@ -359,7 +568,21 @@ class Admin {
      * @return void
      */
     public function render_api_section() {
-        echo '<p>' . esc_html__( 'Enter your Ecwid API credentials. You can find these in your Ecwid Control Panel under Apps > My Apps.', 'ecwid-woocommerce' ) . '</p>';
+        ?>
+        <p><?php esc_html_e( 'Enter your Ecwid API credentials. You can find these in your Ecwid Control Panel.', 'ecwid-woocommerce' ); ?></p>
+        <div class="ecwid-wc-api-help">
+            <details>
+                <summary><?php esc_html_e( 'How to get your API credentials', 'ecwid-woocommerce' ); ?></summary>
+                <ol>
+                    <li><?php esc_html_e( 'Log in to your Ecwid Control Panel', 'ecwid-woocommerce' ); ?></li>
+                    <li><?php esc_html_e( 'Go to Settings > API', 'ecwid-woocommerce' ); ?></li>
+                    <li><?php esc_html_e( 'Your Store ID is displayed at the top', 'ecwid-woocommerce' ); ?></li>
+                    <li><?php esc_html_e( 'Create a new API token or use an existing one', 'ecwid-woocommerce' ); ?></li>
+                    <li><?php esc_html_e( 'Make sure the token has read access to products, orders, and customers', 'ecwid-woocommerce' ); ?></li>
+                </ol>
+            </details>
+        </div>
+        <?php
     }
 
     /**
@@ -369,42 +592,6 @@ class Admin {
      */
     public function render_sync_section() {
         echo '<p>' . esc_html__( 'Configure how data should be synchronized between Ecwid and WooCommerce.', 'ecwid-woocommerce' ) . '</p>';
-    }
-
-    /**
-     * Render text input field.
-     *
-     * @param array $args Field arguments.
-     * @return void
-     */
-    public function render_text_field( $args ) {
-        $value = get_option( $args['id'], '' );
-        printf(
-            '<input type="text" id="%1$s" name="%1$s" value="%2$s" class="regular-text" />',
-            esc_attr( $args['id'] ),
-            esc_attr( $value )
-        );
-        if ( ! empty( $args['description'] ) ) {
-            printf( '<p class="description">%s</p>', esc_html( $args['description'] ) );
-        }
-    }
-
-    /**
-     * Render password input field.
-     *
-     * @param array $args Field arguments.
-     * @return void
-     */
-    public function render_password_field( $args ) {
-        $value = get_option( $args['id'], '' );
-        printf(
-            '<input type="password" id="%1$s" name="%1$s" value="%2$s" class="regular-text" />',
-            esc_attr( $args['id'] ),
-            esc_attr( $value )
-        );
-        if ( ! empty( $args['description'] ) ) {
-            printf( '<p class="description">%s</p>', esc_html( $args['description'] ) );
-        }
     }
 
     /**
@@ -488,6 +675,121 @@ class Admin {
     }
 
     /**
+     * AJAX handler for testing API connection.
+     *
+     * @return void
+     */
+    public function ajax_test_connection() {
+        check_ajax_referer( 'ecwid_wc_admin', 'nonce' );
+
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Permission denied.', 'ecwid-woocommerce' ) ) );
+        }
+
+        // Get credentials - either from request or from saved options.
+        $store_id     = isset( $_POST['store_id'] ) ? sanitize_text_field( wp_unslash( $_POST['store_id'] ) ) : '';
+        $access_token = isset( $_POST['access_token'] ) ? sanitize_text_field( wp_unslash( $_POST['access_token'] ) ) : '';
+
+        // If not provided in request, use saved values.
+        if ( empty( $store_id ) ) {
+            $store_id = get_option( 'ecwid_wc_ecwid_store_id', '' );
+        }
+
+        if ( empty( $access_token ) ) {
+            $encrypted_token = get_option( 'ecwid_wc_ecwid_access_token', '' );
+            $access_token    = $this->encryption->decrypt( $encrypted_token );
+        }
+
+        // Validate inputs.
+        if ( empty( $store_id ) || empty( $access_token ) ) {
+            wp_send_json_error( array(
+                'message' => __( 'API credentials are not configured.', 'ecwid-woocommerce' ),
+            ) );
+        }
+
+        if ( ! Ecwid_Api::validate_store_id( $store_id ) ) {
+            wp_send_json_error( array(
+                'message' => __( 'Store ID must be numeric.', 'ecwid-woocommerce' ),
+            ) );
+        }
+
+        if ( ! Ecwid_Api::validate_access_token( $access_token ) ) {
+            wp_send_json_error( array(
+                'message' => __( 'Access token appears to be invalid.', 'ecwid-woocommerce' ),
+            ) );
+        }
+
+        // Create API client and test connection.
+        $api = Ecwid_Api::get_instance();
+        $api->set_credentials( $store_id, $access_token );
+
+        $result = $api->test_connection();
+
+        // Cache the result.
+        set_transient( 'ecwid_wc_connection_status', $result, HOUR_IN_SECONDS );
+
+        // Log the result.
+        $logger = Logger::get_instance();
+        if ( $result['success'] ) {
+            $logger->info( 'API connection test successful', $result['data'], 'Admin' );
+            wp_send_json_success( $result );
+        } else {
+            $logger->warning( 'API connection test failed: ' . $result['message'], array(), 'Admin' );
+            wp_send_json_error( $result );
+        }
+    }
+
+    /**
+     * AJAX handler for saving credentials.
+     *
+     * @return void
+     */
+    public function ajax_save_credentials() {
+        check_ajax_referer( 'ecwid_wc_admin', 'nonce' );
+
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Permission denied.', 'ecwid-woocommerce' ) ) );
+        }
+
+        $store_id     = isset( $_POST['store_id'] ) ? sanitize_text_field( wp_unslash( $_POST['store_id'] ) ) : '';
+        $access_token = isset( $_POST['access_token'] ) ? sanitize_text_field( wp_unslash( $_POST['access_token'] ) ) : '';
+
+        // Validate Store ID.
+        if ( ! empty( $store_id ) && ! Ecwid_Api::validate_store_id( $store_id ) ) {
+            wp_send_json_error( array(
+                'message' => __( 'Store ID must be numeric.', 'ecwid-woocommerce' ),
+            ) );
+        }
+
+        // Save Store ID.
+        update_option( 'ecwid_wc_ecwid_store_id', $store_id );
+
+        // Save Access Token (encrypted).
+        if ( ! empty( $access_token ) ) {
+            if ( ! Ecwid_Api::validate_access_token( $access_token ) ) {
+                wp_send_json_error( array(
+                    'message' => __( 'Access token appears to be invalid.', 'ecwid-woocommerce' ),
+                ) );
+            }
+
+            $encrypted = $this->encryption->encrypt( $access_token );
+            if ( false === $encrypted ) {
+                wp_send_json_error( array(
+                    'message' => __( 'Failed to encrypt access token.', 'ecwid-woocommerce' ),
+                ) );
+            }
+            update_option( 'ecwid_wc_ecwid_access_token', $encrypted );
+        }
+
+        // Clear connection status cache.
+        delete_transient( 'ecwid_wc_connection_status' );
+
+        wp_send_json_success( array(
+            'message' => __( 'Credentials saved successfully.', 'ecwid-woocommerce' ),
+        ) );
+    }
+
+    /**
      * AJAX handler for starting sync.
      *
      * @return void
@@ -538,32 +840,9 @@ class Admin {
             wp_send_json_error( array( 'message' => __( 'Permission denied.', 'ecwid-woocommerce' ) ) );
         }
 
-        $logger = Utils\Logger::get_instance();
+        $logger = Logger::get_instance();
         $logger->clear_all();
 
         wp_send_json_success( array( 'message' => __( 'Logs cleared.', 'ecwid-woocommerce' ) ) );
-    }
-
-    /**
-     * AJAX handler for testing API connection.
-     *
-     * @return void
-     */
-    public function ajax_test_connection() {
-        check_ajax_referer( 'ecwid_wc_admin', 'nonce' );
-
-        if ( ! current_user_can( 'manage_woocommerce' ) ) {
-            wp_send_json_error( array( 'message' => __( 'Permission denied.', 'ecwid-woocommerce' ) ) );
-        }
-
-        // TODO: Implement actual connection test.
-        $store_id     = get_option( 'ecwid_wc_ecwid_store_id' );
-        $access_token = get_option( 'ecwid_wc_ecwid_access_token' );
-
-        if ( empty( $store_id ) || empty( $access_token ) ) {
-            wp_send_json_error( array( 'message' => __( 'API credentials are not configured.', 'ecwid-woocommerce' ) ) );
-        }
-
-        wp_send_json_success( array( 'message' => __( 'Connection successful!', 'ecwid-woocommerce' ) ) );
     }
 }

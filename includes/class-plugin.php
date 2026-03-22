@@ -78,6 +78,10 @@ class Plugin {
     private function load_dependencies() {
         // Load utility classes.
         require_once ECWID_WC_PLUGIN_DIR . 'includes/utils/class-logger.php';
+        require_once ECWID_WC_PLUGIN_DIR . 'includes/utils/class-encryption.php';
+
+        // Load API classes.
+        require_once ECWID_WC_PLUGIN_DIR . 'includes/api/class-ecwid-api.php';
 
         // Load admin classes if in admin context.
         if ( is_admin() ) {

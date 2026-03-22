@@ -283,6 +283,163 @@ class Ecwid_Api {
     }
 
     /**
+     * Create a product in Ecwid.
+     *
+     * @param array $data Product data.
+     * @return array|\WP_Error Response with product ID or error.
+     */
+    public function create_product( $data ) {
+        $response = $this->post( 'products', $data );
+
+        if ( is_wp_error( $response ) ) {
+            return $response;
+        }
+
+        $this->logger->info(
+            sprintf( 'Created Ecwid product #%d', $response['id'] ?? 0 ),
+            array( 'sku' => $data['sku'] ?? '' ),
+            'Ecwid_Api'
+        );
+
+        return $response;
+    }
+
+    /**
+     * Update a product in Ecwid.
+     *
+     * @param int   $product_id Ecwid product ID.
+     * @param array $data       Product data to update.
+     * @return array|\WP_Error Response or error.
+     */
+    public function update_product( $product_id, $data ) {
+        $response = $this->put( 'products/' . $product_id, $data );
+
+        if ( is_wp_error( $response ) ) {
+            return $response;
+        }
+
+        $this->logger->info(
+            sprintf( 'Updated Ecwid product #%d', $product_id ),
+            array( 'fields' => array_keys( $data ) ),
+            'Ecwid_Api'
+        );
+
+        return $response;
+    }
+
+    /**
+     * Delete a product from Ecwid.
+     *
+     * @param int $product_id Ecwid product ID.
+     * @return array|\WP_Error Response or error.
+     */
+    public function delete_product( $product_id ) {
+        $response = $this->delete( 'products/' . $product_id );
+
+        if ( is_wp_error( $response ) ) {
+            return $response;
+        }
+
+        $this->logger->info(
+            sprintf( 'Deleted Ecwid product #%d', $product_id ),
+            array(),
+            'Ecwid_Api'
+        );
+
+        return $response;
+    }
+
+    /**
+     * Upload main product image.
+     *
+     * @param int    $product_id Ecwid product ID.
+     * @param string $image_url  Image URL.
+     * @return array|\WP_Error Response or error.
+     */
+    public function upload_product_image( $product_id, $image_url ) {
+        return $this->post( 'products/' . $product_id . '/image', array(
+            'externalUrl' => $image_url,
+        ) );
+    }
+
+    /**
+     * Upload gallery image.
+     *
+     * @param int    $product_id Ecwid product ID.
+     * @param string $image_url  Image URL.
+     * @return array|\WP_Error Response or error.
+     */
+    public function upload_gallery_image( $product_id, $image_url ) {
+        return $this->post( 'products/' . $product_id . '/gallery', array(
+            'externalUrl' => $image_url,
+        ) );
+    }
+
+    /**
+     * Delete all gallery images.
+     *
+     * @param int $product_id Ecwid product ID.
+     * @return array|\WP_Error Response or error.
+     */
+    public function delete_gallery_images( $product_id ) {
+        return $this->delete( 'products/' . $product_id . '/gallery' );
+    }
+
+    /**
+     * Create a category in Ecwid.
+     *
+     * @param array $data Category data.
+     * @return array|\WP_Error Response with category ID or error.
+     */
+    public function create_category( $data ) {
+        return $this->post( 'categories', $data );
+    }
+
+    /**
+     * Update a category in Ecwid.
+     *
+     * @param int   $category_id Ecwid category ID.
+     * @param array $data        Category data to update.
+     * @return array|\WP_Error Response or error.
+     */
+    public function update_category( $category_id, $data ) {
+        return $this->put( 'categories/' . $category_id, $data );
+    }
+
+    /**
+     * Delete a category from Ecwid.
+     *
+     * @param int $category_id Ecwid category ID.
+     * @return array|\WP_Error Response or error.
+     */
+    public function delete_category( $category_id ) {
+        return $this->delete( 'categories/' . $category_id );
+    }
+
+    /**
+     * Search products by SKU.
+     *
+     * @param string $sku Product SKU.
+     * @return array|\WP_Error Products matching SKU or error.
+     */
+    public function find_product_by_sku( $sku ) {
+        return $this->get( 'products', array( 'sku' => $sku ) );
+    }
+
+    /**
+     * Adjust product stock.
+     *
+     * @param int $product_id      Ecwid product ID.
+     * @param int $quantity_delta  Quantity to add (positive) or subtract (negative).
+     * @return array|\WP_Error Response or error.
+     */
+    public function adjust_product_stock( $product_id, $quantity_delta ) {
+        return $this->put( 'products/' . $product_id . '/inventory', array(
+            'quantityDelta' => $quantity_delta,
+        ) );
+    }
+
+    /**
      * Make a GET request.
      *
      * @param string $endpoint API endpoint.

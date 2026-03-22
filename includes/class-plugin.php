@@ -49,6 +49,13 @@ class Plugin {
     private $admin = null;
 
     /**
+     * Sync hooks handler.
+     *
+     * @var Sync\Sync_Hooks|null
+     */
+    private $sync_hooks = null;
+
+    /**
      * Get single instance of the class.
      *
      * @return Plugin
@@ -79,9 +86,17 @@ class Plugin {
         // Load utility classes.
         require_once ECWID_WC_PLUGIN_DIR . 'includes/utils/class-logger.php';
         require_once ECWID_WC_PLUGIN_DIR . 'includes/utils/class-encryption.php';
+        require_once ECWID_WC_PLUGIN_DIR . 'includes/utils/class-mapping-repository.php';
 
         // Load API classes.
         require_once ECWID_WC_PLUGIN_DIR . 'includes/api/class-ecwid-api.php';
+
+        // Load mapper classes.
+        require_once ECWID_WC_PLUGIN_DIR . 'includes/mappers/class-product-mapper.php';
+
+        // Load sync classes.
+        require_once ECWID_WC_PLUGIN_DIR . 'includes/sync/class-product-sync.php';
+        require_once ECWID_WC_PLUGIN_DIR . 'includes/sync/class-sync-hooks.php';
 
         // Load admin classes if in admin context.
         if ( is_admin() ) {
@@ -125,6 +140,72 @@ class Plugin {
         if ( is_admin() ) {
             $this->admin = new Admin( $this->plugin_slug, $this->version );
         }
+
+        // Initialize sync hooks.
+        $this->sync_hooks = new Sync\Sync_Hooks();
+        $this->sync_hooks->init();
+
+        // Register cron handlers.
+        add_action( 'ecwid_wc_process_queue', array( $this, 'process_sync_queue' ) );
+        add_action( 'ecwid_wc_scheduled_sync', array( $this, 'run_scheduled_sync' ) );
+        add_action( 'ecwid_wc_cleanup_logs', array( $this, 'cleanup_logs' ) );
+    }
+
+    /**
+     * Process sync queue (cron handler).
+     *
+     * @return void
+     */
+    public function process_sync_queue() {
+        if ( $this->sync_hooks ) {
+            $processed = $this->sync_hooks->process_queue();
+            Utils\Logger::get_instance()->debug(
+                sprintf( 'Processed %d queue items', $processed ),
+                array(),
+                'Plugin'
+            );
+        }
+    }
+
+    /**
+     * Run scheduled sync (cron handler).
+     *
+     * @return void
+     */
+    public function run_scheduled_sync() {
+        $sync_products = get_option( 'ecwid_wc_sync_products', true );
+        $sync_direction = get_option( 'ecwid_wc_sync_direction', 'ecwid_to_wc' );
+
+        if ( ! $sync_products ) {
+            return;
+        }
+
+        if ( in_array( $sync_direction, array( 'wc_to_ecwid', 'bidirectional' ), true ) ) {
+            $product_sync = new Sync\Product_Sync();
+            $result = $product_sync->export_all( array( 'limit' => 100 ) );
+
+            Utils\Logger::get_instance()->info(
+                sprintf(
+                    'Scheduled sync completed: %d created, %d updated, %d errors',
+                    $result['results']['created'],
+                    $result['results']['updated'],
+                    $result['results']['errors']
+                ),
+                array(),
+                'Plugin'
+            );
+        }
+    }
+
+    /**
+     * Cleanup old logs (cron handler).
+     *
+     * @return void
+     */
+    public function cleanup_logs() {
+        $logger = Utils\Logger::get_instance();
+        $deleted = $logger->cleanup();
+        $logger->debug( sprintf( 'Cleaned up %d old log entries', $deleted ), array(), 'Plugin' );
     }
 
     /**

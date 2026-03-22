@@ -1,0 +1,58 @@
+{
+    "name": "vdenezhnev/ecwid-woocommerce",
+    "description": "Двусторонняя синхронизация данных между Ecwid и WooCommerce",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "Ecwid Plugin Team",
+            "homepage": "https://github.com/vdenezhnev"
+        }
+    ],
+    "require": {
+        "php": ">=7.4"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.0",
+        "mockery/mockery": "^1.4",
+        "squizlabs/php_codesniffer": "^3.6",
+        "wp-coding-standards/wpcs": "^3.0",
+        "phpcompatibility/phpcompatibility-wp": "^2.1",
+        "dealerdirect/phpcodesniffer-composer-installer": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Ecwid_WooCommerce\\": "includes/",
+            "Ecwid_WooCommerce\\Api\\": "includes/api/",
+            "Ecwid_WooCommerce\\Sync\\": "includes/sync/",
+            "Ecwid_WooCommerce\\Mappers\\": "includes/mappers/",
+            "Ecwid_WooCommerce\\Utils\\": "includes/utils/"
+        },
+        "classmap": [
+            "admin/"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Ecwid_WooCommerce\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "phpcs": "phpcs --standard=WordPress --extensions=php --ignore=vendor,node_modules .",
+        "phpcbf": "phpcbf --standard=WordPress --extensions=php --ignore=vendor,node_modules ."
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        },
+        "optimize-autoloader": true,
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "support": {
+        "issues": "https://github.com/vdenezhnev/ecwid-plugin/issues",
+        "source": "https://github.com/vdenezhnev/ecwid-plugin"
+    }
+}

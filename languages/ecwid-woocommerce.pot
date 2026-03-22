@@ -1,0 +1,253 @@
+# Copyright (C) 2024 Ecwid Plugin Team
+# This file is distributed under the GPL v2 or later.
+msgid ""
+msgstr ""
+"Project-Id-Version: Ecwid WooCommerce Integration 1.0.0\n"
+"Report-Msgid-Bugs-To: https://github.com/vdenezhnev/ecwid-plugin/issues\n"
+"POT-Creation-Date: 2024-03-22 00:00:00+00:00\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+"X-Generator: WP-CLI\n"
+"X-Domain: ecwid-woocommerce\n"
+
+#. Plugin Name of the plugin
+msgid "Ecwid WooCommerce Integration"
+msgstr ""
+
+#. Description of the plugin
+msgid "Двусторонняя синхронизация данных между Ecwid и WooCommerce. Импорт/экспорт продуктов, заказов и клиентов."
+msgstr ""
+
+#. Author of the plugin
+msgid "Ecwid Plugin Team"
+msgstr ""
+
+#: ecwid-woocommerce.php:62
+#, php-format
+msgid "Ecwid WooCommerce Integration requires PHP version %1$s or higher. You are running version %2$s."
+msgstr ""
+
+#: ecwid-woocommerce.php:80
+#, php-format
+msgid "Ecwid WooCommerce Integration requires WordPress version %1$s or higher. You are running version %2$s."
+msgstr ""
+
+#: ecwid-woocommerce.php:94
+msgid "Ecwid WooCommerce Integration requires WooCommerce to be installed and activated."
+msgstr ""
+
+#: ecwid-woocommerce.php:107
+#, php-format
+msgid "Ecwid WooCommerce Integration requires WooCommerce version %1$s or higher. You are running version %2$s."
+msgstr ""
+
+#: includes/class-plugin.php:115
+msgid "Settings"
+msgstr ""
+
+#: includes/class-plugin.php:136
+msgid "Every 5 Minutes"
+msgstr ""
+
+#: includes/class-plugin.php:141
+msgid "Every 15 Minutes"
+msgstr ""
+
+#: includes/class-activator.php:56
+#, php-format
+msgid "Ecwid WooCommerce Integration requires PHP %s or higher."
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Ecwid WooCommerce"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Sync Dashboard"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Logs"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Ecwid Store ID"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Enter your Ecwid Store ID"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Ecwid Access Token"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Enter your Ecwid API access token"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Sync Direction"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Ecwid to WooCommerce"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "WooCommerce to Ecwid"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Bidirectional"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Sync Products"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Sync Orders"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Sync Customers"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Sync Interval"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Manual"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Every 15 minutes"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Hourly"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Daily"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Save Settings"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Start Sync"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Settings saved successfully."
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Error saving settings."
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Sync started."
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Sync completed successfully."
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Sync failed."
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Products"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Orders"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Customers"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Categories"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Synced"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Pending"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Failed"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Last Sync"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Never"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Clear Logs"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Export Logs"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Logs cleared successfully."
+msgstr ""
+
+#: admin/class-admin.php
+msgid "No logs found."
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Debug"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Info"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Warning"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Error"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Date"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Level"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Message"
+msgstr ""
+
+#: admin/class-admin.php
+msgid "Source"
+msgstr ""

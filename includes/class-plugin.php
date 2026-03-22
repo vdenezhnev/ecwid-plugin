@@ -56,6 +56,13 @@ class Plugin {
     private $sync_hooks = null;
 
     /**
+     * Webhook handler.
+     *
+     * @var Webhooks\Webhook_Handler|null
+     */
+    private $webhook_handler = null;
+
+    /**
      * Get single instance of the class.
      *
      * @return Plugin
@@ -93,10 +100,16 @@ class Plugin {
 
         // Load mapper classes.
         require_once ECWID_WC_PLUGIN_DIR . 'includes/mappers/class-product-mapper.php';
+        require_once ECWID_WC_PLUGIN_DIR . 'includes/mappers/class-order-mapper.php';
+        require_once ECWID_WC_PLUGIN_DIR . 'includes/mappers/class-customer-mapper.php';
 
         // Load sync classes.
         require_once ECWID_WC_PLUGIN_DIR . 'includes/sync/class-product-sync.php';
+        require_once ECWID_WC_PLUGIN_DIR . 'includes/sync/class-order-sync.php';
         require_once ECWID_WC_PLUGIN_DIR . 'includes/sync/class-sync-hooks.php';
+
+        // Load webhook classes.
+        require_once ECWID_WC_PLUGIN_DIR . 'includes/webhooks/class-webhook-handler.php';
 
         // Load admin classes if in admin context.
         if ( is_admin() ) {
@@ -145,10 +158,18 @@ class Plugin {
         $this->sync_hooks = new Sync\Sync_Hooks();
         $this->sync_hooks->init();
 
+        // Initialize webhook handler.
+        $this->webhook_handler = new Webhooks\Webhook_Handler();
+        $this->webhook_handler->init();
+
         // Register cron handlers.
         add_action( 'ecwid_wc_process_queue', array( $this, 'process_sync_queue' ) );
         add_action( 'ecwid_wc_scheduled_sync', array( $this, 'run_scheduled_sync' ) );
+        add_action( 'ecwid_wc_import_orders', array( $this, 'import_orders_cron' ) );
         add_action( 'ecwid_wc_cleanup_logs', array( $this, 'cleanup_logs' ) );
+
+        // Register order status change hooks for bidirectional sync.
+        add_action( 'woocommerce_order_status_changed', array( $this, 'on_order_status_changed' ), 10, 4 );
     }
 
     /**
@@ -206,6 +227,77 @@ class Plugin {
         $logger = Utils\Logger::get_instance();
         $deleted = $logger->cleanup();
         $logger->debug( sprintf( 'Cleaned up %d old log entries', $deleted ), array(), 'Plugin' );
+    }
+
+    /**
+     * Import orders from Ecwid (cron handler).
+     *
+     * @return void
+     */
+    public function import_orders_cron() {
+        $sync_orders    = get_option( 'ecwid_wc_sync_orders', true );
+        $sync_direction = get_option( 'ecwid_wc_sync_direction', 'ecwid_to_wc' );
+
+        if ( ! $sync_orders ) {
+            return;
+        }
+
+        // Only import if direction is Ecwid to WC or bidirectional.
+        if ( ! in_array( $sync_direction, array( 'ecwid_to_wc', 'bidirectional' ), true ) ) {
+            return;
+        }
+
+        $order_sync = new Sync\Order_Sync();
+        $result     = $order_sync->import_new_orders();
+
+        Utils\Logger::get_instance()->info(
+            sprintf(
+                'Cron order import completed: %d created, %d updated, %d errors',
+                $result['results']['created'],
+                $result['results']['updated'],
+                $result['results']['errors']
+            ),
+            array(),
+            'Plugin'
+        );
+    }
+
+    /**
+     * Handle WooCommerce order status change.
+     *
+     * @param int       $order_id   Order ID.
+     * @param string    $old_status Old status.
+     * @param string    $new_status New status.
+     * @param \WC_Order $order      Order object.
+     * @return void
+     */
+    public function on_order_status_changed( $order_id, $old_status, $new_status, $order ) {
+        // Check if bidirectional sync is enabled.
+        $sync_direction = get_option( 'ecwid_wc_sync_direction', 'ecwid_to_wc' );
+        $sync_orders    = get_option( 'ecwid_wc_sync_orders', true );
+
+        if ( ! $sync_orders || ! in_array( $sync_direction, array( 'wc_to_ecwid', 'bidirectional' ), true ) ) {
+            return;
+        }
+
+        // Check if this order is linked to Ecwid.
+        $ecwid_order_id = $order->get_meta( '_ecwid_order_id' );
+
+        if ( empty( $ecwid_order_id ) ) {
+            return;
+        }
+
+        // Update status in Ecwid.
+        $order_sync = new Sync\Order_Sync();
+        $result     = $order_sync->update_ecwid_status( $order_id, $new_status );
+
+        if ( ! $result['success'] ) {
+            Utils\Logger::get_instance()->error(
+                sprintf( 'Failed to update Ecwid order status: %s', $result['message'] ),
+                array( 'order_id' => $order_id, 'new_status' => $new_status ),
+                'Plugin'
+            );
+        }
     }
 
     /**

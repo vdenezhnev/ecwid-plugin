@@ -440,6 +440,181 @@ class Ecwid_Api {
     }
 
     /**
+     * Update an order in Ecwid.
+     *
+     * @param string $order_id Ecwid order ID.
+     * @param array  $data     Order data to update.
+     * @return array|\WP_Error Response or error.
+     */
+    public function update_order( $order_id, $data ) {
+        $response = $this->put( 'orders/' . $order_id, $data );
+
+        if ( is_wp_error( $response ) ) {
+            return $response;
+        }
+
+        $this->logger->info(
+            sprintf( 'Updated Ecwid order #%s', $order_id ),
+            array( 'fields' => array_keys( $data ) ),
+            'Ecwid_Api'
+        );
+
+        return $response;
+    }
+
+    /**
+     * Delete an order from Ecwid.
+     *
+     * @param string $order_id Ecwid order ID.
+     * @return array|\WP_Error Response or error.
+     */
+    public function delete_order( $order_id ) {
+        $response = $this->delete( 'orders/' . $order_id );
+
+        if ( is_wp_error( $response ) ) {
+            return $response;
+        }
+
+        $this->logger->info(
+            sprintf( 'Deleted Ecwid order #%s', $order_id ),
+            array(),
+            'Ecwid_Api'
+        );
+
+        return $response;
+    }
+
+    /**
+     * Create a customer in Ecwid.
+     *
+     * @param array $data Customer data.
+     * @return array|\WP_Error Response with customer ID or error.
+     */
+    public function create_customer( $data ) {
+        $response = $this->post( 'customers', $data );
+
+        if ( is_wp_error( $response ) ) {
+            return $response;
+        }
+
+        $this->logger->info(
+            sprintf( 'Created Ecwid customer #%d', $response['id'] ?? 0 ),
+            array( 'email' => $data['email'] ?? '' ),
+            'Ecwid_Api'
+        );
+
+        return $response;
+    }
+
+    /**
+     * Update a customer in Ecwid.
+     *
+     * @param int   $customer_id Ecwid customer ID.
+     * @param array $data        Customer data to update.
+     * @return array|\WP_Error Response or error.
+     */
+    public function update_customer( $customer_id, $data ) {
+        $response = $this->put( 'customers/' . $customer_id, $data );
+
+        if ( is_wp_error( $response ) ) {
+            return $response;
+        }
+
+        $this->logger->info(
+            sprintf( 'Updated Ecwid customer #%d', $customer_id ),
+            array(),
+            'Ecwid_Api'
+        );
+
+        return $response;
+    }
+
+    /**
+     * Delete a customer from Ecwid.
+     *
+     * @param int $customer_id Ecwid customer ID.
+     * @return array|\WP_Error Response or error.
+     */
+    public function delete_customer( $customer_id ) {
+        $response = $this->delete( 'customers/' . $customer_id );
+
+        if ( is_wp_error( $response ) ) {
+            return $response;
+        }
+
+        $this->logger->info(
+            sprintf( 'Deleted Ecwid customer #%d', $customer_id ),
+            array(),
+            'Ecwid_Api'
+        );
+
+        return $response;
+    }
+
+    /**
+     * Search customers by email.
+     *
+     * @param string $email Customer email.
+     * @return array|\WP_Error Customers matching email or error.
+     */
+    public function find_customer_by_email( $email ) {
+        return $this->get( 'customers', array( 'email' => $email ) );
+    }
+
+    /**
+     * Get webhooks.
+     *
+     * @return array|\WP_Error Webhooks or error.
+     */
+    public function get_webhooks() {
+        return $this->get( 'webhooks' );
+    }
+
+    /**
+     * Create a webhook.
+     *
+     * @param array $data Webhook data.
+     * @return array|\WP_Error Response or error.
+     */
+    public function create_webhook( $data ) {
+        $response = $this->post( 'webhooks', $data );
+
+        if ( is_wp_error( $response ) ) {
+            return $response;
+        }
+
+        $this->logger->info(
+            'Created Ecwid webhook',
+            array( 'url' => $data['url'] ?? '', 'events' => $data['eventType'] ?? '' ),
+            'Ecwid_Api'
+        );
+
+        return $response;
+    }
+
+    /**
+     * Delete a webhook.
+     *
+     * @param string $webhook_id Webhook ID.
+     * @return array|\WP_Error Response or error.
+     */
+    public function delete_webhook( $webhook_id ) {
+        $response = $this->delete( 'webhooks/' . $webhook_id );
+
+        if ( is_wp_error( $response ) ) {
+            return $response;
+        }
+
+        $this->logger->info(
+            sprintf( 'Deleted Ecwid webhook #%s', $webhook_id ),
+            array(),
+            'Ecwid_Api'
+        );
+
+        return $response;
+    }
+
+    /**
      * Make a GET request.
      *
      * @param string $endpoint API endpoint.

@@ -208,6 +208,11 @@ class Activator {
             wp_schedule_event( time(), $sync_interval, 'ecwid_wc_scheduled_sync' );
         }
 
+        // Order import - runs every 15 minutes for near real-time order sync.
+        if ( ! wp_next_scheduled( 'ecwid_wc_import_orders' ) ) {
+            wp_schedule_event( time(), 'ecwid_wc_fifteen_minutes', 'ecwid_wc_import_orders' );
+        }
+
         // Log cleanup - runs daily.
         if ( ! wp_next_scheduled( 'ecwid_wc_cleanup_logs' ) ) {
             wp_schedule_event( time(), 'daily', 'ecwid_wc_cleanup_logs' );

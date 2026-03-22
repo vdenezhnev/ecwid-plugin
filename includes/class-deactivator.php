@@ -51,6 +51,12 @@ class Deactivator {
             wp_unschedule_event( $timestamp, 'ecwid_wc_scheduled_sync' );
         }
 
+        // Order import.
+        $timestamp = wp_next_scheduled( 'ecwid_wc_import_orders' );
+        if ( $timestamp ) {
+            wp_unschedule_event( $timestamp, 'ecwid_wc_import_orders' );
+        }
+
         // Log cleanup.
         $timestamp = wp_next_scheduled( 'ecwid_wc_cleanup_logs' );
         if ( $timestamp ) {
@@ -60,6 +66,7 @@ class Deactivator {
         // Clear all hooks with our prefix.
         wp_clear_scheduled_hook( 'ecwid_wc_process_queue' );
         wp_clear_scheduled_hook( 'ecwid_wc_scheduled_sync' );
+        wp_clear_scheduled_hook( 'ecwid_wc_import_orders' );
         wp_clear_scheduled_hook( 'ecwid_wc_cleanup_logs' );
     }
 

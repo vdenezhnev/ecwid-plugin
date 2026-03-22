@@ -93,9 +93,21 @@ ecwid-woocommerce/
 ├── ecwid-woocommerce.php      # Main plugin file
 ├── includes/
 │   ├── api/                   # API clients
+│   │   └── class-ecwid-api.php
 │   ├── sync/                  # Sync services
+│   │   ├── class-product-sync.php
+│   │   ├── class-order-sync.php
+│   │   └── class-sync-hooks.php
 │   ├── mappers/               # Data mappers
+│   │   ├── class-product-mapper.php
+│   │   ├── class-order-mapper.php
+│   │   └── class-customer-mapper.php
+│   ├── webhooks/              # Webhook handlers
+│   │   └── class-webhook-handler.php
 │   └── utils/                 # Utilities
+│       ├── class-logger.php
+│       ├── class-encryption.php
+│       └── class-mapping-repository.php
 ├── admin/                     # Admin interface
 ├── docs/                      # Documentation
 │   ├── TECHNICAL_SPEC.md
@@ -104,25 +116,60 @@ ecwid-woocommerce/
 └── tests/                     # PHPUnit tests
 ```
 
+## Возможности импорта заказов
+
+### Webhook-based синхронизация
+Плагин поддерживает получение webhook-уведомлений от Ecwid для:
+- `order.created` - новый заказ
+- `order.updated` - обновление заказа
+- `order.deleted` - удаление заказа
+
+**Webhook URL**: `{site}/wp-json/ecwid-wc/v1/webhook`
+
+### WP-Cron периодическая проверка
+Если webhook-и не настроены, плагин автоматически проверяет новые заказы каждые 15 минут через WP-Cron.
+
+### Маппинг статусов заказа
+
+| Ecwid Payment Status | WooCommerce Status |
+|---------------------|-------------------|
+| AWAITING_PAYMENT | pending |
+| PAID | processing |
+| CANCELLED | cancelled |
+| REFUNDED | refunded |
+
+| Ecwid Fulfillment Status | WooCommerce Status |
+|-------------------------|-------------------|
+| AWAITING_PROCESSING | processing |
+| PROCESSING | processing |
+| SHIPPED | completed |
+| DELIVERED | completed |
+
+### Двунаправленное обновление статусов
+При изменении статуса заказа в WooCommerce (который связан с Ecwid), статус автоматически синхронизируется обратно в Ecwid.
+
 ## Roadmap
 
-### Фаза 1: MVP
-- [ ] Базовая структура плагина
-- [ ] API-клиенты Ecwid и WooCommerce
-- [ ] Маппинг продуктов
-- [ ] Синхронизация Ecwid → WooCommerce
-- [ ] Админ-интерфейс
+### Фаза 1: MVP ✅
+- [x] Базовая структура плагина
+- [x] API-клиент Ecwid
+- [x] Шифрование API ключей (AES-256)
+- [x] Маппинг продуктов
+- [x] Экспорт продуктов WC → Ecwid
+- [x] Админ-интерфейс
 
-### Фаза 2: Расширение
-- [ ] Синхронизация заказов
-- [ ] Синхронизация клиентов
-- [ ] Обратная синхронизация
-- [ ] Webhooks
+### Фаза 2: Расширение ✅
+- [x] Импорт заказов из Ecwid
+- [x] Маппинг клиентов
+- [x] Webhook Handler для Ecwid
+- [x] WP-Cron для периодической проверки
+- [x] Двунаправленное обновление статусов
 
 ### Фаза 3: Продвинутые функции
-- [ ] Двусторонняя синхронизация
-- [ ] Разрешение конфликтов
+- [ ] Полная двусторонняя синхронизация
+- [ ] Импорт продуктов из Ecwid
 - [ ] REST API плагина
+- [ ] Разрешение конфликтов
 
 ## Лицензия
 

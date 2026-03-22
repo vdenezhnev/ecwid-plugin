@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<phpunit
+    bootstrap="tests/bootstrap/bootstrap.php"
+    backupGlobals="false"
+    colors="true"
+    convertErrorsToExceptions="true"
+    convertNoticesToExceptions="true"
+    convertWarningsToExceptions="true"
+    >
+    <testsuites>
+        <testsuite name="Unit Tests">
+            <directory suffix="Test.php">./tests/unit</directory>
+        </testsuite>
+        <testsuite name="Integration Tests">
+            <directory suffix="Test.php">./tests/integration</directory>
+        </testsuite>
+    </testsuites>
+    <coverage processUncoveredFiles="true">
+        <include>
+            <directory suffix=".php">./includes</directory>
+            <directory suffix=".php">./admin</directory>
+        </include>
+        <exclude>
+            <directory suffix=".php">./tests</directory>
+        </exclude>
+    </coverage>
+    <php>
+        <const name="ECWID_SYNC_TESTING" value="true"/>
+        <const name="WP_DEBUG" value="true"/>
+    </php>
+</phpunit>

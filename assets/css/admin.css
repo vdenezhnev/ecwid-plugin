@@ -1,0 +1,186 @@
+/**
+ * Ecwid WooCommerce Sync - Admin Styles
+ */
+
+.ecwid-sync-admin {
+    max-width: 1200px;
+}
+
+.ecwid-sync-admin .nav-tab-wrapper {
+    margin-bottom: 20px;
+}
+
+.ecwid-sync-admin .tab-content {
+    background: #fff;
+    padding: 20px;
+    border: 1px solid #c3c4c7;
+    border-top: none;
+}
+
+/* Sync Status */
+.ecwid-sync-status,
+.ecwid-sync-stats {
+    margin-bottom: 30px;
+}
+
+.ecwid-sync-status h3,
+.ecwid-sync-stats h3,
+.ecwid-webhook-info h3 {
+    margin-top: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.ecwid-sync-status .button,
+.ecwid-sync-stats .button {
+    margin-right: 10px;
+}
+
+/* Webhook Info */
+.ecwid-webhook-info {
+    margin-top: 30px;
+    padding: 20px;
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.ecwid-webhook-info code {
+    display: block;
+    padding: 10px;
+    background: #fff;
+    border: 1px solid #ddd;
+    margin: 10px 0;
+    font-size: 13px;
+    word-break: break-all;
+}
+
+/* Logs Table */
+.ecwid-logs {
+    overflow-x: auto;
+}
+
+.ecwid-logs table {
+    margin-top: 15px;
+}
+
+.ecwid-logs table td code {
+    font-size: 11px;
+    max-width: 300px;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Log Levels */
+.log-level {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.log-level-debug {
+    background: #e0e0e0;
+    color: #666;
+}
+
+.log-level-info {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.log-level-warning {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.log-level-error {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* Log Row Colors */
+tr.log-error {
+    background-color: #fff5f5 !important;
+}
+
+tr.log-warning {
+    background-color: #fffaf0 !important;
+}
+
+/* Result Messages */
+#ecwid-connection-result,
+#ecwid-sync-result,
+#ecwid-webhook-result {
+    display: inline-block;
+    margin-left: 10px;
+    font-weight: 500;
+}
+
+#ecwid-connection-result.success,
+#ecwid-sync-result.success,
+#ecwid-webhook-result.success {
+    color: #28a745;
+}
+
+#ecwid-connection-result.error,
+#ecwid-sync-result.error,
+#ecwid-webhook-result.error {
+    color: #dc3545;
+}
+
+/* Order Meta Box */
+.ecwid-order-meta {
+    width: 100%;
+}
+
+.ecwid-order-meta td {
+    padding: 5px 0;
+    vertical-align: top;
+}
+
+.ecwid-order-meta td:first-child {
+    width: 40%;
+}
+
+/* Responsive */
+@media screen and (max-width: 782px) {
+    .ecwid-sync-admin .tab-content {
+        padding: 15px;
+    }
+    
+    .ecwid-webhook-info code {
+        font-size: 11px;
+    }
+    
+    .ecwid-logs table td code {
+        max-width: 150px;
+    }
+}
+
+/* Loading State */
+.ecwid-loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.ecwid-loading::after {
+    content: '';
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    margin-left: 10px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #0073aa;
+    border-radius: 50%;
+    animation: ecwid-spin 1s linear infinite;
+}
+
+@keyframes ecwid-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

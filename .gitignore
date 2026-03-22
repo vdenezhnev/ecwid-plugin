@@ -1,0 +1,43 @@
+# Composer
+/vendor/
+composer.lock
+
+# Node
+/node_modules/
+package-lock.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Build
+/build/
+/dist/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# PHPUnit
+.phpunit.result.cache
+phpunit.xml
+
+# Coverage
+/coverage/
+.coverage
+
+# WordPress
+wp-config.php
+wp-content/uploads/
+wp-content/upgrade/
